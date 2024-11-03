@@ -1,4 +1,5 @@
 import mysql from 'mysql'
+import { BooksPrivate, BooksPublic } from './BooksMV.js'
 
 const connection = mysql.createConnection({
     host: 'localhost',
@@ -64,14 +65,41 @@ export async function updateBookStatus(bookId, bookStatus) {
     })
 }
 
-export async function getAllBooks() {
+export async function getAllBooks(isForExport) {
     return new Promise((resolve, reject) => {
         connection.query('SELECT * FROM books', (error, response) => {
             if (error) {
                 reject({ status: 500, data: 'Error al obtener los libros.', error: error })
             } else {
-                resolve({ status: 200, data: response })
+                if (!isForExport) {
+                    const books = convertBooksToPrivate(response)
+                    resolve({ status: 200, data: books })
+                } else {
+                    const books = convertBooksToPublic(response)
+                    resolve({ status: 200, data: books })
+                }
             }
         })
     })
+}
+
+function convertBooksToPrivate(books) {
+    const booksMapped = []
+
+    books.forEach(book => {
+        const newBook = new BooksPrivate(book.book_id, book.book_name, book.book_author, book.book_genre, book.book_status, book.book_route, 'UTL', '')
+        booksMapped.push(newBook)
+    })
+
+    return booksMapped
+}
+
+function convertBooksToPublic(books) {
+    const booksMapped = []
+
+    books.forEach(book => {
+        const newBook = new BooksPublic(book.book_name, book.book_author, book.book_genre, book.book_status, book.book_route, 'UTL', '')
+        booksMapped.push(newBook)
+    })
+    return booksMapped
 }

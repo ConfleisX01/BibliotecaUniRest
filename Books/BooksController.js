@@ -1,8 +1,8 @@
 import express from 'express'
 import { validateNewBook, validateUpdateBook, validateUpdateBookStatus } from './BooksCQRS.js'
 import { getAllBooks } from './BooksDAO.js'
-import { getBooksFromUniversity } from '../AppService/ExternalBooks.js'
-import { BooksPrivate, BooksPublic } from './BooksMV.js'
+import { getBooksFromOthers } from '../AppService/ExternalBooks.js'
+import { MappingForOxford } from './Mappings.js'
 
 const BooksController = express.Router()
 
@@ -52,7 +52,8 @@ BooksController.post('/updateBookStatus', async (req, res) => {
 
 BooksController.get('/getBooksList', async (req, res) => {
     try {
-        const response = await getAllBooks()
+        const response = await getAllBooks(false)
+
         res.status(response.status).send(response.data)
     } catch (error) {
         console.error(error)
@@ -62,16 +63,9 @@ BooksController.get('/getBooksList', async (req, res) => {
 
 BooksController.get('/getPublicBooks', async (req, res) => {
     try {
-        const booksList = []
-        const response = await getAllBooks()
-        const myBooks = response.data
+        const response = await getAllBooks(true)
 
-        myBooks.forEach(book => {
-            const exportedBook = new BooksPublic(book.book_name, book.book_author, book.book_genre, book.book_status, book.book_route, 'UTL')
-            booksList.push(exportedBook)
-        })
-
-        res.status(200).send(booksList)
+        res.status(200).send(response.data)
     } catch (error) {
         console.error(error)
         res.status(500).send('Error de servidor, intentelo mas tarde.')
@@ -79,17 +73,18 @@ BooksController.get('/getPublicBooks', async (req, res) => {
 })
 
 BooksController.get('/getAllBooks', async (req, res) => {
+    const URLS = [
+        'http://localhost:3001/books/getPublicBooks'
+    ]
     try {
-        const mappedBooksFromRobert = []
-        const myBooks = await getAllBooks()
-        const booksFromRobert = await getBooksFromUniversity('http://192.168.137.1:3001/empleado/getAllLibrosPublico')
-        booksFromRobert.data.forEach(book => {
-            const newBook = new BooksPrivate(book.nombreLibro, book.autorLibro, book.generoLibro, book.estatusLibro, book.rutaPdfLibro, book.casaLibro)
-            mappedBooksFromRobert.push(newBook)
-        })
-        res.send([...myBooks.data, ...mappedBooksFromRobert])
+        const myBooks = await getAllBooks(false)
+        //const booksFromOxford = await getBooksFromOthers(URLS[0], MappingForOxford)
+
+        const allBooks = [...myBooks.data]
+        res.status(200).send(allBooks)
     } catch (error) {
         console.error(error)
+        res.status(500).send('Error de servidor, intentelo mas tarde.')
     }
 })
 
